@@ -45,7 +45,14 @@ _cargar_env_local()
 
 # Constantes
 DB_NAME = "sidera_datos.db"
-CLIENTES_CONTROL = ['Celso', 'Vertice', 'Canella', '3D Land', 'Moreira', 'Giampaoli', 'Otro']
+
+# Clientes para FONDEO (Ingresos)
+CLIENTES_FONDEO = ['Celso', 'Vertice', 'Canella', '3D Land', 'Moreira', 'Giampaoli', 'Otro']
+
+# Clientes para MOSTRADOR (Egresos y Pedidos)
+CLIENTES_MOSTRADOR = ['Giardino', 'Fimex', 'Alcaide', 'Red Bird', 'Parra', 'Moreira', 'Giampaoli', 'Manu Camps Salta', 'CC General', 'Ajustes Manuales']
+
+# Clientes para EXTRACTOR (Doble Partida)
 CLIENTES_EXTRACTOR = ["Celso", "Canella", "Vertice", "3D Land", "Moreira", "Giampaoli", "Otro"]
 
 # =============================================================================
@@ -530,7 +537,7 @@ def tab_control():
     col1, col2 = st.columns([1, 2])
     
     with col1:
-        cliente_fondeo = st.selectbox("📌 ¿De quién es el fondeo?", CLIENTES_CONTROL, key="select_fondeo")
+        cliente_fondeo = st.selectbox("📌 ¿De quién es el fondeo?", CLIENTES_FONDEO, key="select_fondeo")
     
     with col2:
         archivos_fondeo = st.file_uploader(
@@ -629,7 +636,7 @@ def tab_control():
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            solicitante = st.selectbox("Cliente", CLIENTES_CONTROL, key="manual_sol")
+            solicitante = st.selectbox("Cliente", CLIENTES_MOSTRADOR, key="manual_sol")
         
         with col2:
             sub_cliente = st.text_input("Sub-cliente (opcional)", key="manual_sub")
@@ -832,8 +839,8 @@ def tab_control():
                 col_edit1, col_edit2, col_edit3, col_edit4 = st.columns(4)
                 
                 with col_edit1:
-                    nuevo_cliente = st.selectbox("Cliente", CLIENTES_CONTROL, 
-                                                index=CLIENTES_CONTROL.index(salida['solicitante']) if salida['solicitante'] in CLIENTES_CONTROL else 0,
+                    nuevo_cliente = st.selectbox("Cliente", CLIENTES_MOSTRADOR, 
+                                                index=CLIENTES_MOSTRADOR.index(salida['solicitante']) if salida['solicitante'] in CLIENTES_MOSTRADOR else 0,
                                                 key=f"edit_cliente_{salida['id']}")
                 
                 with col_edit2:
@@ -880,7 +887,9 @@ def tab_control():
         filtro_tipo = st.selectbox("Tipo", ["TODOS", "ENTRADA", "SALIDA"], key="filtro_tipo")
     
     with col2:
-        filtro_cliente = st.selectbox("Cliente", ["TODOS"] + CLIENTES_CONTROL, key="filtro_cliente")
+        # Lista unificada de todos los clientes (fondeo + mostrador, sin duplicados)
+        todos_clientes = sorted(list(set(CLIENTES_FONDEO + CLIENTES_MOSTRADOR)))
+        filtro_cliente = st.selectbox("Cliente", ["TODOS"] + todos_clientes, key="filtro_cliente")
     
     with col3:
         buscar_texto = st.text_input("🔍 Buscar en titular", key="buscar")
