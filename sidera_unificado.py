@@ -45,8 +45,8 @@ _cargar_env_local()
 
 # Constantes
 DB_NAME = "sidera_datos.db"
-CLIENTES_CONTROL = ['Giardino', 'Fimex', 'Alcaide', 'Red Bird', 'Parra', 'Moreira', 'Giampaoli', 'CC General', 'Ajustes Manuales']
-CLIENTES_EXTRACTOR = ["Celso", "Canella", "Vertice", "3D Land", "Moreira", "Giampaoli"]
+CLIENTES_CONTROL = ['Celso', 'Vertice', 'Canella', '3D Land', 'Moreira', 'Giampaoli', 'Otro']
+CLIENTES_EXTRACTOR = ["Celso", "Canella", "Vertice", "3D Land", "Moreira", "Giampaoli", "Otro"]
 
 # =============================================================================
 # FUNCIONES DE BASE DE DATOS
@@ -778,24 +778,93 @@ def tab_control():
                         st.caption(salida['datos_extraidos'])
             
             with col5:
-                if salida['estado'] == 'SUGERIDO':
-                    if st.button("✅", key=f"ok_{salida['id']}"):
-                        conn.execute("UPDATE transacciones SET estado = 'COMPLETADO' WHERE id = ?", (salida['id'],))
-                        conn.commit()
-                        st.rerun()
+                # Botones para PENDIENTES
+                if salida['estado'] == 'PENDIENTE':
+                    col_btn1, col_btn2, col_btn3 = st.columns(3)
                     
-                    if st.button("❌", key=f"no_{salida['id']}"):
-                        conn.execute(
-                            "UPDATE transacciones SET estado = 'PENDIENTE', nivel_alerta = NULL, datos_extraidos = NULL, id_operacion = NULL WHERE id = ?",
-                            (salida['id'],)
-                        )
-                        conn.commit()
-                        st.rerun()
+                    with col_btn1:
+                        if st.button("✅", key=f"ok_pend_{salida['id']}", help="Marcar como completado"):
+                            conn.execute("UPDATE transacciones SET estado = 'COMPLETADO' WHERE id = ?", (salida['id'],))
+                            conn.commit()
+                            st.rerun()
+                    
+                    with col_btn2:
+                        if st.button("✏️", key=f"edit_{salida['id']}", help="Editar"):
+                            st.session_state[f'editando_{salida["id"]}'] = True
+                            st.rerun()
+                    
+                    with col_btn3:
+                        if st.button("🗑️", key=f"del_pend_{salida['id']}", help="Eliminar"):
+                            conn.execute("DELETE FROM transacciones WHERE id = ?", (salida['id'],))
+                            conn.commit()
+                            st.rerun()
                 
-                if st.button("🗑️", key=f"del_{salida['id']}"):
-                    conn.execute("DELETE FROM transacciones WHERE id = ?", (salida['id'],))
-                    conn.commit()
-                    st.rerun()
+                # Botones para SUGERIDOS
+                elif salida['estado'] == 'SUGERIDO':
+                    col_btn1, col_btn2, col_btn3 = st.columns(3)
+                    
+                    with col_btn1:
+                        if st.button("✅", key=f"ok_{salida['id']}", help="Confirmar match"):
+                            conn.execute("UPDATE transacciones SET estado = 'COMPLETADO' WHERE id = ?", (salida['id'],))
+                            conn.commit()
+                            st.rerun()
+                    
+                    with col_btn2:
+                        if st.button("❌", key=f"no_{salida['id']}", help="Rechazar match"):
+                            conn.execute(
+                                "UPDATE transacciones SET estado = 'PENDIENTE', nivel_alerta = NULL, datos_extraidos = NULL, id_operacion = NULL WHERE id = ?",
+                                (salida['id'],)
+                            )
+                            conn.commit()
+                            st.rerun()
+                    
+                    with col_btn3:
+                        if st.button("🗑️", key=f"del_{salida['id']}", help="Eliminar"):
+                            conn.execute("DELETE FROM transacciones WHERE id = ?", (salida['id'],))
+                            conn.commit()
+                            st.rerun()
+            
+            # Modal de edición si está activo
+            if st.session_state.get(f'editando_{salida["id"]}', False):
+                st.markdown("---")
+                st.markdown(f"**✏️ Editando transferencia #{salida['id']}**")
+                
+                col_edit1, col_edit2, col_edit3, col_edit4 = st.columns(4)
+                
+                with col_edit1:
+                    nuevo_cliente = st.selectbox("Cliente", CLIENTES_CONTROL, 
+                                                index=CLIENTES_CONTROL.index(salida['solicitante']) if salida['solicitante'] in CLIENTES_CONTROL else 0,
+                                                key=f"edit_cliente_{salida['id']}")
+                
+                with col_edit2:
+                    nuevo_titular = st.text_input("Titular", value=salida['titular'], key=f"edit_tit_{salida['id']}")
+                
+                with col_edit3:
+                    nuevo_monto = st.text_input("Monto", value=str(salida['monto']), key=f"edit_monto_{salida['id']}")
+                
+                with col_edit4:
+                    st.write("")  # Espaciado
+                    col_save, col_cancel = st.columns(2)
+                    
+                    with col_save:
+                        if st.button("💾", key=f"save_{salida['id']}", help="Guardar cambios"):
+                            try:
+                                monto_float = limpiar_monto(nuevo_monto)
+                                conn.execute(
+                                    "UPDATE transacciones SET solicitante = ?, titular = ?, monto = ? WHERE id = ?",
+                                    (nuevo_cliente, nuevo_titular, monto_float, salida['id'])
+                                )
+                                conn.commit()
+                                del st.session_state[f'editando_{salida["id"]}']
+                                st.success("✅ Guardado")
+                                st.rerun()
+                            except:
+                                st.error("❌ Error al guardar")
+                    
+                    with col_cancel:
+                        if st.button("❌", key=f"cancel_{salida['id']}", help="Cancelar"):
+                            del st.session_state[f'editando_{salida["id"]}']
+                            st.rerun()
     else:
         st.info("ℹ️ No hay transferencias pendientes")
     
